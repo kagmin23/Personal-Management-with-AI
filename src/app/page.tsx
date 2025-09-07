@@ -8,7 +8,7 @@ export default function HomePage() {
 
   useEffect(() => {
     // Redirect về trang login ngay khi component mount
-    router.push('/login')
+  router.push('/login')
   }, [router])
 
   // Hiển thị loading trong khi redirect
