@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Login } from '@/types/auth'
 import { ArrowRight, Eye, EyeOff, Lock, Mail, Shield, Sparkles, Target, User } from 'lucide-react'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type React from 'react'
 import { ChangeEvent, useRef, useState } from 'react'
@@ -161,6 +162,16 @@ export default function PersonalManagementLogin() {
           <section className="w-1/2 h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-8">
             <div className="w-full max-w-md">
               <div className="mb-10 text-center">
+                <div className="mb-6 flex justify-center">
+                  <Image
+                    src="/logo.svg"
+                    alt="App Logo"
+                    width={64}
+                    height={64}
+                    priority
+                    className="drop-shadow-lg"
+                  />
+                </div>
                 <h2 className="text-4xl font-bold text-white mb-2">Welcome Back!</h2>
                 <p className="text-slate-400 text-sm italic">Sign in to continue your journey.</p>
               </div>

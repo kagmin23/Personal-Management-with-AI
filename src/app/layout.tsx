@@ -10,6 +10,14 @@ export const metadata: Metadata = {
   keywords: ['quản lý', 'cá nhân', 'next.js', 'tailwind'],
   authors: [{ name: 'KagMin' }],
   viewport: 'width=device-width, initial-scale=1',
+  icons: {
+    icon: [
+      { url: '/logo.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/logo.svg', type: 'image/svg+xml' },
+    ],
+  },
 }
 
 export default function RootLayout({

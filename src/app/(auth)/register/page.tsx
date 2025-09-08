@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Register } from '@/types/auth'
 import { ArrowRight, Eye, EyeOff, Lock, Mail, Shield, Sparkles, Target, User } from 'lucide-react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useRef, useState } from 'react'
 
@@ -142,13 +143,23 @@ export default function PersonalManagementRegister() {
           <section className="w-1/2 h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-8">
             <div className="w-full max-w-md">
               <div className="mb-8 text-center">
-                <h2 className="text-4xl font-bold text-white mb-2">Create Account</h2>
+                <div className="mb-6 flex justify-center">
+                  <Image
+                    src="/logo.svg"
+                    alt="App Logo"
+                    width={64}
+                    height={64}
+                    priority
+                    className="drop-shadow-lg"
+                  />
+                </div>
+                <h2 className="text-4xl font-bold text-white mb-2">Create Account!</h2>
                 <p className="text-slate-400 text-sm italic">Start your journey with us.</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-10">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Email */}
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-slate-300 text-xs font-medium">Email Address</Label>
                     <div className="relative group">
