@@ -161,7 +161,10 @@ export default function PersonalManagementRegister() {
                 {/* Email */}
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-slate-300 text-xs font-medium">Email Address</Label>
+                    <Label htmlFor="email" className="text-slate-300 text-xs font-medium">
+                      Email Address
+                      <span className="text-red-400 ml-1 italic text-[9px]">( * use real email for verify )</span>
+                    </Label>
                     <div className="relative group">
                       <Input
                         type="email"
