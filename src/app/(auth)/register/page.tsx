@@ -1,37 +1,19 @@
 'use client'
 
+import LogoLoader from '@/components/LogoLoader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Register } from '@/types/auth'
-import { ArrowRight, Eye, EyeOff, Lock, Mail, Shield, Sparkles, Target, User } from 'lucide-react'
+import { googleLogin, register } from '@/services/auth/authService'
+import { useAuthStore } from '@/stores/authStore'
+import { ApiError, User as AuthUser, LoginResponse, Register } from '@/types/auth'
+import { CredentialResponse, GoogleLogin } from '@react-oauth/google'
+import { ArrowRight, Eye, EyeOff, Lock, Mail, Shield, Sparkles, Target, User as UserIcon } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ChangeEvent, FormEvent, useRef, useState } from 'react'
-
-// Deterministic animated dots
-const DOT_CLASSES: string[] = [
-  'left-[5%] top-[12%] [animation-delay:0.2s] [animation-duration:2.8s]',
-  'left-[14%] top-[28%] [animation-delay:0.6s] [animation-duration:3.4s]',
-  'left-[22%] top-[40%] [animation-delay:1.2s] [animation-duration:2.6s]',
-  'left-[30%] top-[18%] [animation-delay:0.9s] [animation-duration:3.0s]',
-  'left-[38%] top-[55%] [animation-delay:1.5s] [animation-duration:4.0s]',
-  'left-[46%] top-[72%] [animation-delay:0.3s] [animation-duration:2.4s]',
-  'left-[54%] top-[20%] [animation-delay:1.8s] [animation-duration:3.2s]',
-  'left-[62%] top-[64%] [animation-delay:0.4s] [animation-duration:2.9s]',
-  'left-[70%] top-[36%] [animation-delay:1.1s] [animation-duration:3.6s]',
-  'left-[78%] top-[10%] [animation-delay:0.7s] [animation-duration:2.7s]',
-  'left-[86%] top-[48%] [animation-delay:1.9s] [animation-duration:3.1s]',
-  'left-[8%] top-[68%] [animation-delay:0.5s] [animation-duration:4.2s]',
-  'left-[18%] top-[85%] [animation-delay:1.3s] [animation-duration:3.7s]',
-  'left-[28%] top-[6%] [animation-delay:2.0s] [animation-duration:2.5s]',
-  'left-[48%] top-[32%] [animation-delay:1.0s] [animation-duration:3.9s]',
-  'left-[58%] top-[82%] [animation-delay:0.8s] [animation-duration:2.6s]',
-  'left-[66%] top-[14%] [animation-delay:1.6s] [animation-duration:3.3s]',
-  'left-[74%] top-[74%] [animation-delay:0.2s] [animation-duration:2.2s]',
-  'left-[84%] top-[26%] [animation-delay:1.4s] [animation-duration:3.5s]',
-  'left-[92%] top-[58%] [animation-delay:0.3s] [animation-duration:2.8s]'
-]
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
+import { DOT_CLASSES } from './components/dot'
 
 export default function PersonalManagementRegister() {
   const [showPassword, setShowPassword] = useState(false)
@@ -42,6 +24,9 @@ export default function PersonalManagementRegister() {
     confirmPassword: '',
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const authLogin = useAuthStore(s => s.login)
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement | null>(null)
 
@@ -50,13 +35,65 @@ export default function PersonalManagementRegister() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  // Only render GoogleLogin after mount to avoid FedCM AbortError
+  useEffect(() => { setMounted(true) }, [])
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
-    setTimeout(() => {
-      console.log('Register data:', formData)
+    try {
+      const res = await register(formData.email, formData.password, formData.confirmPassword)
+      toast.success(res.message || '✅ Register Successfully!')
+      setRedirecting(true)
+      setTimeout(() => router.push('/login?form=1'), 3000)
+    } catch (err: unknown) {
+      const error = err as ApiError
+      if (error.messages) {
+        error.messages.forEach(msg => toast.error(msg))
+      } else if (error.message) {
+        toast.error(error.message)
+      } else {
+        toast.error('An error occurred while registering in.')
+      }
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
+  }
+
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    const idToken = credentialResponse.credential
+    if (!idToken) {
+      toast.error('Google credential not found.')
+      return
+    }
+    setIsLoading(true)
+    try {
+      const res: LoginResponse = await googleLogin(idToken)
+      toast.success(res?.message || '✅ Google Account Linked!')
+      const token: string = res?.token ?? res?.data?.token ?? ''
+      const user: AuthUser = res?.user ?? res?.data?.user ?? { email: '' }
+      if (token) {
+        authLogin(user, token)
+        localStorage.setItem('token', token)
+      }
+      if (user?.email) {
+        localStorage.setItem('user', JSON.stringify(user))
+        localStorage.setItem('email', user.email)
+      }
+      setRedirecting(true)
+      setTimeout(() => router.push('/verify'), 2000)
+    } catch (err: unknown) {
+      const error = err as ApiError
+      if (error?.messages?.length) {
+        error.messages.forEach(msg => toast.error(msg))
+      } else if (error?.message) {
+        toast.error(error.message)
+      } else {
+        toast.error('Google registration/login failed.')
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const goToLogin = (e: React.MouseEvent) => {
@@ -64,11 +101,21 @@ export default function PersonalManagementRegister() {
     if (containerRef.current) {
       containerRef.current.classList.add('swipe-right')
     }
+    setIsLoading(true)
     setTimeout(() => router.push('/login?form=1'), 250)
   }
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 flex items-center justify-center p-4 relative overflow-hidden auth-page">
+      {(isLoading || redirecting) && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+          <LogoLoader
+            fullScreen={false}
+            label={redirecting ? 'Redirecting to login page...' : 'Page turning...'}
+            size="lg"
+          />
+        </div>
+      )}
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
@@ -102,7 +149,7 @@ export default function PersonalManagementRegister() {
               <div className="text-center z-10 px-8 max-w-2xl">
                 <div className="relative mb-8">
                   <div className="w-28 h-28 bg-white/20 rounded-full flex items-center justify-center mx-auto backdrop-blur-sm border border-white/30">
-                    <User className="w-14 h-14 text-white" />
+                    <UserIcon className="w-14 h-14 text-white" />
                     <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center animate-bounce">
                       <Sparkles className="w-4 h-4 text-yellow-800" />
                     </div>
@@ -153,11 +200,11 @@ export default function PersonalManagementRegister() {
                     className="drop-shadow-lg"
                   />
                 </div>
-                <h2 className="text-4xl font-bold text-white mb-2">Create Account!</h2>
-                <p className="text-slate-400 text-sm italic">Start your journey with us.</p>
+                <h2 className="text-3xl font-bold text-white mb-2">Create Account!</h2>
+                <p className="text-slate-400 text-xs italic">Start your journey with us.</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Email */}
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -174,9 +221,9 @@ export default function PersonalManagementRegister() {
                         onChange={handleInputChange}
                         placeholder="Enter your email"
                         required
-                        className="pl-10 pr-4 py-4 bg-slate-800/50 border-slate-600/50 text-white placeholder-slate-500 rounded-xl focus:bg-slate-800 focus:border-blue-500 transition-all duration-300 text-xs backdrop-blur-sm"
+                        className="pl-9.5 pr-4 py-4 text-[12px] placeholder:text-[11px] bg-slate-800/50 border-slate-600/50 text-white placeholder-slate-500 rounded-xl focus:bg-slate-800 focus:border-blue-500 transition-all duration-300 backdrop-blur-sm"
                       />
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
                     </div>
                   </div>
 
@@ -192,13 +239,13 @@ export default function PersonalManagementRegister() {
                         onChange={handleInputChange}
                         placeholder="Enter a password"
                         required
-                        className="pl-10 pr-14 py-4 bg-slate-800/50 border-slate-600/50 text-white placeholder-slate-500 rounded-xl focus:bg-slate-800 focus:border-blue-500 transition-all duration-300 text-xs backdrop-blur-sm"
+                        className="pl-9.5 pr-14 py-4 placeholder:text-[11px] bg-slate-800/50 border-slate-600/50 text-white placeholder-slate-500 rounded-xl focus:bg-slate-800 focus:border-blue-500 transition-all duration-300 text-xs backdrop-blur-sm"
                       />
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors p-1 rounded-md hover:bg-slate-700"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors p-1 rounded-md hover:bg-slate-700"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -217,13 +264,13 @@ export default function PersonalManagementRegister() {
                         onChange={handleInputChange}
                         placeholder="Confirm your password"
                         required
-                        className="pl-10 pr-14 py-4 bg-slate-800/50 border-slate-600/50 text-white placeholder-slate-500 rounded-xl focus:bg-slate-800 focus:border-blue-500 transition-all duration-300 text-xs backdrop-blur-sm"
+                        className="pl-9.5 pr-14 py-4 placeholder:text-[11px] bg-slate-800/50 border-slate-600/50 text-white placeholder-slate-500 rounded-xl focus:bg-slate-800 focus:border-blue-500 transition-all duration-300 text-xs backdrop-blur-sm"
                       />
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors p-1 rounded-md hover:bg-slate-700"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors p-1 rounded-md hover:bg-slate-700"
                       >
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -256,31 +303,32 @@ export default function PersonalManagementRegister() {
                   <div className="flex-1 border-t border-slate-600/50"></div>
                 </div>
 
-                {/* Social Login */}
-                <Button
-                  variant="outline"
-                  className="w-full flex items-center justify-center gap-4 border-slate-600/50 text-white hover:bg-slate-800/50 py-4 rounded-xl text-xs font-medium transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm"
-                >
-                  <svg className="w-6 h-6" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                {/* Social / Google Login */}
+                <div className="w-full flex flex-col items-center">
+                {mounted ? (
+                  <div className="w-full flex items-center justify-center p-2 rounded-xl bg-transparent border border-slate-600/50 hover:bg-slate-800/50 transition-all duration-300 backdrop-blur-sm">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={() => {
+                        console.warn('[GoogleLogin] onError triggered')
+                        toast.error('Google login failed.')
+                      }}
+                      containerProps={{
+                        style: {
+                          width: '100%',
+                        },
+                      }}
+                      theme="outline"
+                      shape="rectangular"
+                      text="signin_with"
+                      locale="en"
                     />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  Continue with Google
-                </Button>
+                  </div>
+                ) : (
+                  <div className="w-full flex items-center justify-center py-4 text-[11px] text-slate-400 border border-dashed border-slate-600/40 rounded-xl">Loading Google...</div>
+                )}
+                <p className="text-[10px] italic text-slate-500 mt-2">Protected by Google reCAPTCHA</p>
+              </div>
               </form>
 
               {/* Login Link */}

@@ -1,0 +1,22 @@
+export const DOT_CLASSES: string[] = [
+    'left-[5%] top-[12%] [animation-delay:0.2s] [animation-duration:2.8s]',
+    'left-[14%] top-[28%] [animation-delay:0.6s] [animation-duration:3.4s]',
+    'left-[22%] top-[40%] [animation-delay:1.2s] [animation-duration:2.6s]',
+    'left-[30%] top-[18%] [animation-delay:0.9s] [animation-duration:3.0s]',
+    'left-[38%] top-[55%] [animation-delay:1.5s] [animation-duration:4.0s]',
+    'left-[46%] top-[72%] [animation-delay:0.3s] [animation-duration:2.4s]',
+    'left-[54%] top-[20%] [animation-delay:1.8s] [animation-duration:3.2s]',
+    'left-[62%] top-[64%] [animation-delay:0.4s] [animation-duration:2.9s]',
+    'left-[70%] top-[36%] [animation-delay:1.1s] [animation-duration:3.6s]',
+    'left-[78%] top-[10%] [animation-delay:0.7s] [animation-duration:2.7s]',
+    'left-[86%] top-[48%] [animation-delay:1.9s] [animation-duration:3.1s]',
+    'left-[8%] top-[68%] [animation-delay:0.5s] [animation-duration:4.2s]',
+    'left-[18%] top-[85%] [animation-delay:1.3s] [animation-duration:3.7s]',
+    'left-[28%] top-[6%] [animation-delay:2.0s] [animation-duration:2.5s]',
+    'left-[48%] top-[32%] [animation-delay:1.0s] [animation-duration:3.9s]',
+    'left-[58%] top-[82%] [animation-delay:0.8s] [animation-duration:2.6s]',
+    'left-[66%] top-[14%] [animation-delay:1.6s] [animation-duration:3.3s]',
+    'left-[74%] top-[74%] [animation-delay:0.2s] [animation-duration:2.2s]',
+    'left-[84%] top-[26%] [animation-delay:1.4s] [animation-duration:3.5s]',
+    'left-[92%] top-[58%] [animation-delay:0.3s] [animation-duration:2.8s]'
+]

@@ -1,15 +1,19 @@
 'use client'
 
+import LogoLoader from '@/components/LogoLoader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { resendOtp, verifyOtp } from '@/services/auth/authService'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 export default function VerifyOtpPage() {
   const [otp, setOtp] = useState(Array(6).fill(''))
   const [isLoading, setIsLoading] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
   const router = useRouter()
 
   const handleChange = (value: string, index: number) => {
@@ -24,17 +28,46 @@ export default function VerifyOtpPage() {
     }
   }
 
+  interface ApiError { message?: string; messages?: string[] }
+
   const handleSubmit = async () => {
+    const code = otp.join('')
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+    const email = stored ? (() => { try { return JSON.parse(stored)?.email as string | undefined } catch { return undefined } })() : undefined
+
+    if (!email) {
+      toast.error('Email not found. Please login again.')
+      router.push('/login?form=1')
+      return
+    }
+
     setIsLoading(true)
-    setTimeout(() => {
-      console.log('OTP Submitted:', otp.join(''))
+    try {
+      const res = await verifyOtp(email, code)
+      toast.success(res?.message || '✅ Verify Successfully!')
+      setRedirecting(true)
+      setTimeout(() => router.push('/ai-assistant'), 2000)
+    } catch (err: unknown) {
+      const error = err as ApiError
+      if (error?.messages?.length) error.messages.forEach(m => toast.error(m))
+      else if (error?.message) toast.error(error.message)
+      else toast.error('An error occurred while verifying.')
+    } finally {
       setIsLoading(false)
-      router.push('/dashboard')
-    }, 2000)
+    }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 flex items-center justify-center p-4 relative overflow-hidden">
+      {(isLoading || redirecting) && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+          <LogoLoader
+            fullScreen={false}
+            label={redirecting ? 'Page turning...' : 'Page turning...'}
+            size="lg"
+          />
+        </div>
+      )}
       {/* background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
@@ -44,7 +77,10 @@ export default function VerifyOtpPage() {
       <div className="w-full max-w-md bg-slate-900/80 border border-slate-700/50 backdrop-blur-xl shadow-2xl rounded-3xl p-10 relative z-10">
         {/* nút back */}
         <Button
-          onClick={() => router.push('/login?form=1')}
+          onClick={() => {
+            setIsLoading(true)
+            setTimeout(() => router.push('/login?form=1'), 150)
+          }}
           className="absolute top-4 left-4 text-slate-400 hover:text-white transition-colors p-2 rounded-full hover:bg-slate-800"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -108,7 +144,27 @@ export default function VerifyOtpPage() {
             Didn’t receive the code?{' '}
             <button
               className="text-blue-400 hover:text-blue-300 underline transition-colors font-medium"
-              onClick={() => alert('Resend OTP')}
+              onClick={async () => {
+                const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+                const email = stored ? (() => { try { return JSON.parse(stored)?.email as string | undefined } catch { return undefined } })() : undefined
+                if (!email) {
+                  toast.error('Email not found. Please login again.')
+                  router.push('/login?form=1')
+                  return
+                }
+                setIsLoading(true)
+                try {
+                  const res = await resendOtp(email)
+                  toast.success(res?.message || 'OTP resent to your email')
+                } catch (err: unknown) {
+                  const error = err as { message?: string; messages?: string[] }
+                  if (error?.messages?.length) error.messages.forEach(m => toast.error(m))
+                  else if (error?.message) toast.error(error.message)
+                  else toast.error('Failed to resend OTP')
+                } finally {
+                  setIsLoading(false)
+                }
+              }}
             >
               Resend
             </button>
